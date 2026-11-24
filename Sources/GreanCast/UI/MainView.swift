@@ -73,6 +73,11 @@ struct MainView: View {
                     .help("Copy a screenshot to the clipboard (⇧⌘C)")
             }
             .disabled(session.phase != .connected)
+            Toggle(isOn: $session.keepAwake) {
+                Label("Keep Awake", systemImage: session.keepAwake ? "cup.and.saucer.fill" : "cup.and.saucer")
+            }
+            .help(session.keepAwake ? "Keeping the iPhone awake while connected (click to turn off)"
+                                    : "Keep the iPhone awake while connected")
             Button { showInspector.toggle() } label: { Label("Inspector", systemImage: "sidebar.right") }
         }
     }
@@ -182,6 +187,7 @@ private struct InspectorView: View {
                     GridRow { Text("Video").foregroundStyle(.secondary); Text("\(session.fps) fps") }
                     GridRow { Text("Last command").foregroundStyle(.secondary); Text(session.lastLatencyMS.map { "\($0) ms" } ?? "—") }
                     GridRow { Text("Queued").foregroundStyle(.secondary); Text("\(session.pending)") }
+                    GridRow { Text("Keep awake").foregroundStyle(.secondary); Text(session.keepAwake ? "On" : "Off") }
                 }
                 .font(.callout)
                 .frame(maxWidth: .infinity, alignment: .leading)

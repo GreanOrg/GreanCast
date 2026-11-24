@@ -37,6 +37,8 @@ struct GreanCastApp: App {
                 Button("Volume Up") { session.volume(up: true) }.keyboardShortcut(.upArrow, modifiers: [.command, .option])
                 Button("Volume Down") { session.volume(up: false) }.keyboardShortcut(.downArrow, modifiers: [.command, .option])
                 Divider()
+                Toggle("Keep iPhone Awake", isOn: $session.keepAwake)
+                Divider()
                 Button("Copy Screenshot") { session.copyScreenshot() }.keyboardShortcut("c", modifiers: [.command, .shift])
                 Button("Reconnect") { session.start() }.keyboardShortcut("r", modifiers: .command)
             }

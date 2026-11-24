@@ -17,6 +17,12 @@ struct SettingsView: View {
                     ForEach(session.teams) { Text($0.label).tag($0.id) }
                 }
                 Section {
+                    Toggle("Keep the iPhone awake while connected", isOn: $session.keepAwake)
+                } footer: {
+                    Text("After 20 s without commands, GreanCast sends an empty hardware-keyboard event that resets the iPhone's Auto-Lock timer. Nothing is typed and nothing changes on screen. Your Auto-Lock setting is not modified, and it applies again as soon as GreanCast disconnects.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Section {
                     Toggle("Use Wi‑Fi instead of USB", isOn: $session.useWiFi)
                     TextField("WebDriverAgent URL", text: $session.wifiURL)
                         .disabled(!session.useWiFi)
