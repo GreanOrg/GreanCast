@@ -59,7 +59,7 @@ struct SetupView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Label("On first launch", systemImage: "info.circle").font(.headline)
                         Text("GreanCast downloads WebDriverAgent (~5 MB), builds it with your team and installs it on the iPhone. Then, on the iPhone, trust your certificate in Settings › General › VPN & Device Management.")
-                        Text("Keep the iPhone unlocked while you use it: WebDriverAgent can't type your passcode. A longer Auto-Lock delay (Settings › Display & Brightness) helps.")
+                        Text("Unlock the iPhone before connecting: WebDriverAgent can't type your passcode. Once connected, GreanCast keeps it awake (toolbar ☕️ button).")
                     }
                     .font(.callout)
                     .frame(maxWidth: .infinity, alignment: .leading)

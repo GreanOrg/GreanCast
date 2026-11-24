@@ -157,6 +157,18 @@ final class WDAClient {
         try await sessionCall("POST", "wda/apps/launch", body: ["bundleId": bundleID])
     }
 
+    // MARK: - Keep awake
+
+    /// Sends an empty HID keyboard event (page 0x07, usage 0x00, "no event indicated").
+    /// iOS counts it as user activity and resets its Auto-Lock timer, with no visible effect:
+    /// the on-screen keyboard stays up and nothing is typed. Measured on iOS 27.3: ~0.22 s.
+    /// (Generic Desktop "System Wake Up" and Consumer usage 0 also reset the timer but block
+    /// WebDriverAgent for ~5.2 s, so they are not used.)
+    func keepAlive() async throws {
+        try await sessionCall("POST", "wda/performIoHidEvent",
+                              body: ["page": 0x07, "usage": 0x00, "duration": 0.005])
+    }
+
     // MARK: - Screen lock
 
     /// True when the iPhone shows its lock screen (WDA can't type the passcode).

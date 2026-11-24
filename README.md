@@ -24,12 +24,13 @@ It quickly became part of how we code and test. We figured other developers have
 - Home, App Switcher, Control Center, volume, open an app by bundle ID, copy a screenshot
 - **USB by default:** ~1 ms transport round trip, no Wi‑Fi needed, nothing exposed on the network
 - Setup assistant: checks Xcode, your Apple developer team, the iPhone and Developer Mode. It then downloads, builds, signs and launches WebDriverAgent for you.
+- **Keep awake:** while connected, GreanCast stops the iPhone from auto-locking without changing its settings (on by default, toolbar ☕️ button)
 - Lock-screen detection, with a wake & unlock button for iPhones without a passcode
 
 ## Limitations (read this first)
 
 - **Latency.** Each action takes **~0.3–0.5 s**: tap ≈ 440 ms, typing ≈ 320 ms per burst, Home ≈ 50 ms. That time is spent inside XCTest on the iPhone; the transport isn't the bottleneck. GreanCast is comfortable for remote control, demos and testing, but not for games.
-- **The iPhone must stay unlocked.** WebDriverAgent can't type a passcode. Set a long Auto-Lock delay while you use it.
+- **Start with the iPhone unlocked.** WebDriverAgent can't type a passcode. Once connected, *Keep awake* stops Auto-Lock from kicking in. It works by sending an empty hardware-keyboard event (HID usage 0x07/0x00) after 20 s without commands: nothing is typed and nothing changes on screen. Locking the iPhone yourself (side button) still works.
 - **No arrow keys.** WebDriverAgent can't synthesize navigation keys.
 - **The on-screen keyboard hides while you type.** Typing goes through a simulated hardware keyboard, so iOS hides the on-screen keyboard and may highlight the focused field with the app's tint color. A tap brings the keyboard back.
 

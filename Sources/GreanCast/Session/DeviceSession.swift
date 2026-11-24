@@ -43,6 +43,13 @@ final class DeviceSession: ObservableObject {
     @Published var useWiFi: Bool { didSet { defaults.set(useWiFi, forKey: "useWiFi") } }
     @Published var wifiURL: String { didSet { defaults.set(wifiURL, forKey: "wifiURL") } }
     @Published var videoScale: Double { didSet { defaults.set(videoScale, forKey: "videoScale") } }
+    /// Prevents the iPhone from auto-locking while connected (on by default).
+    @Published var keepAwake: Bool {
+        didSet {
+            defaults.set(keepAwake, forKey: "keepAwake")
+            log.info("Keep iPhone awake: \(keepAwake ? "on" : "off")")
+        }
+    }
 
     var selectedPhone: PhoneInfo? { phones.first { $0.udid == udid } }
     var selectedTeam: DeveloperTeam? { teams.first { $0.id == teamID } }
@@ -57,6 +64,8 @@ final class DeviceSession: ObservableObject {
     private var forwarders: [PortForwarder] = []
     private var chain: Task<Void, Never>?
     private var lockTimer: Timer?
+    private var keepAwakeTimer: Timer?
+    private var lastActivity = Date()
     private var fpsTimer: Timer?
     private var frameCount = 0
     private var typeBuffer = ""
@@ -72,6 +81,7 @@ final class DeviceSession: ObservableObject {
         useWiFi = defaults.bool(forKey: "useWiFi")
         wifiURL = defaults.string(forKey: "wifiURL") ?? "http://192.168.0.10:8100"
         videoScale = defaults.object(forKey: "videoScale") as? Double ?? 50
+        keepAwake = defaults.object(forKey: "keepAwake") as? Bool ?? true
 
         stream.onFrame = { [weak self] img in self?.received(img) }
         stream.onError = { [weak self] msg in self?.log.info("Video stream: \(msg) — reconnecting") }
@@ -221,6 +231,8 @@ final class DeviceSession: ObservableObject {
             relaunchAttempts = 0
             log.info("Connected via \(transportLabel) — \(Int(deviceSize.width))×\(Int(deviceSize.height)) pt")
             startLockMonitor()
+            lastActivity = Date()
+            startKeepAwake()
             return .ok
         } catch {
             let message = describe(error)
@@ -233,6 +245,7 @@ final class DeviceSession: ObservableObject {
     func disconnect() {
         stream.stop()
         lockTimer?.invalidate(); lockTimer = nil
+        keepAwakeTimer?.invalidate(); keepAwakeTimer = nil
         chain?.cancel(); chain = nil
         client = nil
         image = nil
@@ -275,6 +288,25 @@ final class DeviceSession: ObservableObject {
         run("unlock") { c in try await c.unlock() }
     }
 
+    // MARK: - Keep awake
+
+    /// Without user commands for `keepAwakeIdle` seconds, sends an invisible HID event so that
+    /// iOS doesn't auto-lock (see `WDAClient.keepAlive`). Nothing is sent while locked.
+    private static let keepAwakeIdle: TimeInterval = 20
+
+    private func startKeepAwake() {
+        keepAwakeTimer?.invalidate()
+        keepAwakeTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.keepAwakeTick() }
+        }
+    }
+
+    private func keepAwakeTick() {
+        guard keepAwake, phase == .connected, !isLocked, pending == 0,
+              Date().timeIntervalSince(lastActivity) >= Self.keepAwakeIdle else { return }
+        run("keep awake", silent: true) { c in try await c.keepAlive() }
+    }
+
     /// Unlock before a session exists (waiting-for-unlock screen). Works without a passcode only.
     func wakeAndUnlock() {
         guard let base = forwarders.first.map({ URL(string: "http://127.0.0.1:\($0.localPort)")! })
@@ -310,20 +342,22 @@ final class DeviceSession: ObservableObject {
     // MARK: - Command queue
 
     /// Runs commands strictly in order, one at a time, and records each one's latency.
-    private func run(_ name: String, _ op: @escaping (WDAClient) async throws -> Void) {
+    /// `silent` commands (keep-awake) don't show in the latency or queue counters.
+    private func run(_ name: String, silent: Bool = false, _ op: @escaping (WDAClient) async throws -> Void) {
         guard let c = client, phase == .connected else { return }
-        pending += 1
+        lastActivity = Date()
+        if !silent { pending += 1 }
         let previous = chain
         chain = Task { [weak self] in
             await previous?.value
             let t0 = Date()
             do {
                 try await op(c)
-                self?.lastLatencyMS = Int(Date().timeIntervalSince(t0) * 1000)
+                if !silent { self?.lastLatencyMS = Int(Date().timeIntervalSince(t0) * 1000) }
             } catch {
                 self?.log.error("\(name): \(describe(error))")
             }
-            self?.pending -= 1
+            if !silent { self?.pending -= 1 }
         }
     }
 
