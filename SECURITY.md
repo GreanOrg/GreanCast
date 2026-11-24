@@ -14,4 +14,4 @@ Planned: a patched WDA build that binds to the loopback interface on the iPhone,
 
 ## Reporting a vulnerability
 
-Please report vulnerabilities privately through GitHub Security Advisories on the GreanOrg/greancast repository, rather than in a public issue.
+Please report vulnerabilities privately through GitHub Security Advisories on the GreanOrg/GreanCast repository, rather than in a public issue.

@@ -1,0 +1,62 @@
+# CI: checks that GreanCast builds (Debug and universal Release) on every push to main and
+# every pull request. No signing, no secrets: safe to run on pull requests from forks.
+# Runtime behaviour needs a real iPhone and is covered by `make selftest` (see the PR template).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build (${{ matrix.configuration }})
+    runs-on: macos-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Build
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project GreanCast.xcodeproj \
+            -scheme GreanCast \
+            -configuration ${{ matrix.configuration }} \
+            -destination 'generic/platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGN_IDENTITY=- CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM= \
+            ONLY_ACTIVE_ARCH=NO \
+            | tee build/xcodebuild.log
+
+      - name: Check the app bundle
+        run: |
+          APP=build/DerivedData/Build/Products/${{ matrix.configuration }}/GreanCast.app
+          codesign --verify --strict "$APP"
+          lipo -archs "$APP/Contents/MacOS/GreanCast"
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP/Contents/Info.plist"
+
+      - name: Fail on compiler warnings
+        run: |
+          if grep -E "^/.*: warning: " build/xcodebuild.log | grep -v "/DerivedData/"; then
+            echo "::error::The build has compiler warnings (see above)."
+            exit 1
+          fi

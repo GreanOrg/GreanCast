@@ -49,7 +49,7 @@ The first launch signs WebDriverAgent with your team and installs it on the iPho
 ### From source
 
 ```bash
-git clone https://github.com/GreanOrg/greancast.git
+git clone https://github.com/GreanOrg/GreanCast.git
 cd greancast
 make run
 ```
@@ -93,7 +93,9 @@ WebDriverAgent runs an **unauthenticated** HTTP server on the iPhone. GreanCast 
 
 ## Contributing
 
-Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md).
+[![CI](https://github.com/GreanOrg/GreanCast/actions/workflows/ci.yml/badge.svg)](https://github.com/GreanOrg/GreanCast/actions/workflows/ci.yml)
+
+Issues and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 

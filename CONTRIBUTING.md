@@ -37,6 +37,15 @@ The Xcode project uses a **synchronized folder**: every file under `Sources/Grea
 | `Config` | Build settings (`GreanCast.xcconfig`), optional `Local.xcconfig` |
 | `scripts` | Icon generator, release script (Developer ID + notarization + DMG) |
 
+## Workflow
+
+1. Fork the repository and create a branch from `main` (e.g. `fix/scroll-speed`).
+2. Make your change, build it, and test it on a real iPhone (`make selftest`).
+3. Open a pull request against `main` and fill in the template. CI checks that the Debug and universal Release builds compile without warnings.
+4. A maintainer reviews it. Pull requests are squash-merged, so one PR becomes one commit on `main`.
+
+For larger changes, please open an issue first to discuss the approach.
+
 ## Guidelines
 
 - Keep the app dependency-free (Apple frameworks only). WebDriverAgent is fetched at runtime at a pinned revision (`WDAManager.pinnedCommit`).
