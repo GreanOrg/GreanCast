@@ -1,5 +1,7 @@
 # GreanCast
 
+**English** | [Français](README.fr.md)
+
 **Control your iPhone from your Mac.** See its screen live, click to tap, drag to swipe, type with your Mac keyboard.
 
 GreanCast is an open-source macOS app for developers. It's similar to [scrcpy](https://github.com/Genymobile/scrcpy) on Android, but for iPhone. It drives the iPhone through [WebDriverAgent](https://github.com/appium/appium-ios/tree/main/packages/webdriveragent), a server maintained by Appium that is built on Apple's XCUITest framework. The default connection is a USB cable.
@@ -51,7 +53,7 @@ The first launch signs WebDriverAgent with your team and installs it on the iPho
 
 ```bash
 git clone https://github.com/GreanOrg/GreanCast.git
-cd greancast
+cd GreanCast
 make run
 ```
 
