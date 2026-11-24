@@ -1,0 +1,33 @@
+// GreanCast.xcconfig — build settings of the GreanCast app target (Debug and Release).
+// Kept here rather than in project.pbxproj so they are readable and diff-friendly.
+//
+// Signing: by default the app is signed to run locally (ad-hoc), so anyone can build it
+// without an Apple account. To sign with your own certificate, copy Local.xcconfig.example to
+// Local.xcconfig (git-ignored) and set your team there.
+
+PRODUCT_NAME = GreanCast
+PRODUCT_BUNDLE_IDENTIFIER = com.grean.greancast
+MARKETING_VERSION = 0.1.0
+CURRENT_PROJECT_VERSION = 1
+
+SDKROOT = macosx
+SUPPORTED_PLATFORMS = macosx
+MACOSX_DEPLOYMENT_TARGET = 14.0
+SWIFT_VERSION = 5.0
+
+INFOPLIST_FILE = Resources/Info.plist
+GENERATE_INFOPLIST_FILE = NO
+ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon
+ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor
+COMBINE_HIDPI_IMAGES = YES
+ENABLE_PREVIEWS = YES
+LD_RUNPATH_SEARCH_PATHS = $(inherited) @executable_path/../Frameworks
+
+// No App Sandbox: GreanCast runs xcodebuild, devicectl and git, and talks to usbmuxd.
+ENABLE_APP_SANDBOX = NO
+ENABLE_HARDENED_RUNTIME = YES
+CODE_SIGN_ENTITLEMENTS = Resources/GreanCast.entitlements
+CODE_SIGN_STYLE = Automatic
+CODE_SIGN_IDENTITY = -
+
+#include? "Local.xcconfig"

@@ -1,0 +1,6 @@
+// Copy to Config/Local.xcconfig (git-ignored) to sign builds with your own certificate.
+// A stable signature lets macOS remember the app's permissions (e.g. Local Network)
+// across rebuilds. Your team ID is shown in Xcode › Settings › Accounts.
+
+DEVELOPMENT_TEAM = ABCDE12345
+CODE_SIGN_IDENTITY = Apple Development
