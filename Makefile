@@ -2,7 +2,8 @@
 #   make            Release build → build/GreanCast.app
 #   make run        build and open it
 #   make debug      Debug build → build/GreanCast.app
-#   make selftest   build, connect to the plugged-in iPhone, measure fps/latency, save a frame
+#   make selftest   build, connect to the plugged-in iPhone, measure fps/latency, save a frame,
+#                   then call the MCP server over HTTP (handshake, tools, screenshot)
 #   make icon       regenerate the app icon (scripts/make-icon.swift)
 #   make release    universal build, Developer ID signature, notarization, DMG (scripts/release.sh)
 #   make clean

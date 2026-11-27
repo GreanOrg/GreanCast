@@ -67,4 +67,52 @@ enum SystemChecks {
                              transport: conn["transportType"] as? String ?? "?")
         }
     }
+
+    // MARK: - Apps on the iPhone (used by the MCP server)
+
+    /// Apps installed on the iPhone, sorted by name (`xcrun devicectl device info apps`).
+    /// Measured on iOS 27.3 over USB: ~0.7 s for 288 apps. Fails while the iPhone is locked.
+    static func installedApps(udid: String) async throws -> [InstalledApp] {
+        let json = try await devicectl(["device", "info", "apps", "--device", udid, "--include-all-apps"])
+        let apps = (json["result"] as? [String: Any])?["apps"] as? [[String: Any]] ?? []
+        return apps.compactMap { a -> InstalledApp? in
+            guard let id = a["bundleIdentifier"] as? String, (a["hidden"] as? Bool) != true,
+                  (a["appClip"] as? Bool) != true else { return nil }
+            return InstalledApp(bundleID: id,
+                                name: a["name"] as? String ?? id,
+                                version: a["version"] as? String ?? "",
+                                isSystem: (a["defaultApp"] as? Bool) ?? false)
+        }
+        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
+
+    /// Installs a .app bundle or .ipa that is on this Mac.
+    static func installApp(udid: String, path: String) async throws {
+        _ = try await devicectl(["device", "install", "app", "--device", udid, path])
+    }
+
+    /// Runs a devicectl command and returns its JSON output, or throws CoreDevice's own message.
+    private static func devicectl(_ args: [String]) async throws -> [String: Any] {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("greancast-devicectl-\(UUID().uuidString).json")
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let r = await Shell.xcrun(["devicectl"] + args + ["--json-output", tmp.path])
+        let json = (try? Data(contentsOf: tmp)).flatMap { try? JSONSerialization.jsonObject(with: $0) as? [String: Any] } ?? [:]
+        if let error = json["error"] as? [String: Any] {
+            let info = error["userInfo"] as? [String: Any]
+            let text = (info?["NSLocalizedDescription"] as? [String: Any])?["string"] as? String
+            throw WDAError(message: text ?? "devicectl failed (\(error["code"] ?? "?"))")
+        }
+        guard r.ok else {
+            throw WDAError(message: r.output.split(separator: "\n").last.map(String.init) ?? "devicectl failed")
+        }
+        return json
+    }
+}
+
+struct InstalledApp: Sendable {
+    let bundleID: String
+    let name: String
+    let version: String
+    /// Ships with iOS (Settings, Safari…).
+    let isSystem: Bool
 }

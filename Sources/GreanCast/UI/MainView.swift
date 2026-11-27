@@ -176,7 +176,16 @@ private struct LockOverlay: View {
 private struct InspectorView: View {
     @ObservedObject var session: DeviceSession
     @ObservedObject var log = Log.shared
+    @EnvironmentObject private var mcp: MCPServer
     @State private var bundleID = "com.apple.mobilenotes"
+
+    private var mcpStatus: String {
+        switch mcp.state {
+        case .stopped: return "Off"
+        case .listening: return "On, port \(mcp.settings.port)" + (mcp.calls > 0 ? " — \(mcp.calls) call\(mcp.calls == 1 ? "" : "s")" : "")
+        case .failed: return "Error (see Settings)"
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -188,6 +197,7 @@ private struct InspectorView: View {
                     GridRow { Text("Last command").foregroundStyle(.secondary); Text(session.lastLatencyMS.map { "\($0) ms" } ?? "—") }
                     GridRow { Text("Queued").foregroundStyle(.secondary); Text("\(session.pending)") }
                     GridRow { Text("Keep awake").foregroundStyle(.secondary); Text(session.keepAwake ? "On" : "Off") }
+                    GridRow { Text("MCP server").foregroundStyle(.secondary); Text(mcpStatus) }
                 }
                 .font(.callout)
                 .frame(maxWidth: .infinity, alignment: .leading)

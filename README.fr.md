@@ -28,6 +28,7 @@ L'outil est vite devenu indispensable pour coder et tester. D'autres développeu
 - Assistant de configuration : il vérifie Xcode, votre équipe de développement Apple, l'iPhone et le mode développeur. Il télécharge ensuite WebDriverAgent, le compile, le signe et le lance pour vous.
 - **Garder éveillé :** tant qu'il est connecté, GreanCast empêche le verrouillage automatique de l'iPhone sans modifier ses réglages (activé par défaut, bouton ☕️ de la barre d'outils)
 - Détection de l'écran verrouillé, avec un bouton pour réveiller et déverrouiller un iPhone sans code
+- **Serveur MCP intégré :** un assistant IA (Claude Code, Codex, Cursor, VS Code…) peut voir l'iPhone et s'en servir — voir [Assistants IA](#assistants-ia-serveur-mcp)
 
 ## Limites (à lire en premier)
 
@@ -80,9 +81,40 @@ Mac (GreanCast)                                  iPhone
 2. **Connexion :** GreanCast dialogue avec `usbmuxd` (le même protocole que `iproxy`) et relaie deux ports locaux, accessibles seulement depuis 127.0.0.1, vers les ports 8100 et 9100 de l'iPhone.
 3. **Saisie :** les clics et les glissers deviennent des actions de pointeur W3C. Le texte passe par `/wda/keys`, regroupé pendant qu'une requête est en cours. Les boutons physiques utilisent les points d'accès dédiés de WDA.
 
+## Assistants IA (serveur MCP)
+
+GreanCast intègre un serveur [Model Context Protocol](https://modelcontextprotocol.io) : un assistant de code peut regarder l'iPhone et le piloter tant que l'app est ouverte. Rien à installer, pas de connexion à un compte.
+
+1. Ouvrez **Settings › MCP** et activez **Allow AI clients on this Mac**.
+2. Ajoutez le serveur à votre client. Les réglages affichent les commandes, prêtes à copier :
+
+   ```sh
+   claude mcp add --transport http greancast http://127.0.0.1:8765/mcp   # Claude Code
+   codex mcp add greancast --url http://127.0.0.1:8765/mcp               # Codex
+   ```
+
+   Cursor, VS Code et les autres clients acceptent la même URL dans leur configuration MCP (type `http`).
+3. Demandez quelque chose : « prends une capture de l'iPhone », « ouvre Réglages et va dans Général ».
+
+| Outils | Rôle |
+|---|---|
+| `screenshot`, `screenshot_with_metadata` | L'écran en JPEG, tiré du flux vidéo en direct ; en option avec l'appareil, la version d'iOS, l'app au premier plan, la date et l'heure, la connexion, la résolution, l'orientation, la batterie |
+| `describe_ui`, `wait_for` | Les éléments à l'écran (libellés, valeurs, positions) d'après l'arbre d'accessibilité ; attendre qu'un élément apparaisse |
+| `tap`, `tap_element`, `swipe`, `type_text` | Toucher, double toucher ou appui long à des coordonnées, toucher un élément par son libellé, glisser ou faire défiler, saisir du texte |
+| `press_button` | Home, volume, sélecteur d'apps, centre de contrôle, verrouillage |
+| `list_apps`, `launch_app`, `terminate_app`, `app_state`, `open_url` | Apps installées, ouvrir ou fermer une app, ouvrir un lien web ou un lien profond |
+| `get_alert`, `accept_alert`, `dismiss_alert`, `set_orientation`, `dismiss_keyboard` | Alertes, rotation, clavier |
+| `get_clipboard`, `set_clipboard`, `install_app` | Désactivés par défaut : presse-papiers de l'iPhone, installation d'un `.app` ou `.ipa` depuis le Mac |
+
+Les coordonnées sont en pixels de la capture. Les outils d'action acceptent `screenshot: true` pour renvoyer l'écran après l'action dans le même appel.
+
+Chaque groupe d'outils a son interrupteur dans Settings › MCP ; un outil désactivé est masqué pour les clients. **Allow AI clients on the local network** rend le serveur accessible depuis d'autres ordinateurs, par une URL qui contient un jeton secret. Le serveur ne parle que Streamable HTTP : les clients qui ne savent lancer que des commandes locales (stdio), comme l'app de bureau Claude, ne sont pas encore pris en charge.
+
 ## Sécurité
 
-WebDriverAgent fait tourner sur l'iPhone un serveur HTTP **sans authentification**. GreanCast l'utilise toujours par USB, via des ports accessibles seulement en local. Mais **WebDriverAgent écoute aussi sur l'interface Wi‑Fi de l'iPhone pendant qu'il tourne** : pendant ce temps, n'importe qui sur le même réseau pourrait piloter le téléphone. GreanCast arrête WebDriverAgent quand vous le quittez. Évitez les réseaux non fiables pendant une session. Le mode Wi‑Fi facultatif, dans les réglages, présente le même risque. Voir [SECURITY.md](SECURITY.md) (en anglais).
+WebDriverAgent fait tourner sur l'iPhone un serveur HTTP **sans authentification**. GreanCast l'utilise toujours par USB, via des ports accessibles seulement en local. Mais **WebDriverAgent écoute aussi sur l'interface Wi‑Fi de l'iPhone pendant qu'il tourne** : pendant ce temps, n'importe qui sur le même réseau pourrait piloter le téléphone. GreanCast arrête WebDriverAgent quand vous le quittez. Évitez les réseaux non fiables pendant une session. Le mode Wi‑Fi facultatif, dans les réglages, présente le même risque.
+
+Le serveur MCP est désactivé par défaut. Une fois activé, tout programme du Mac peut voir et piloter l'iPhone par son intermédiaire, sans authentification ; sur le réseau, quiconque possède l'URL le peut aussi. Voir [SECURITY.md](SECURITY.md) (en anglais).
 
 ## Dépannage
 
@@ -91,6 +123,8 @@ WebDriverAgent fait tourner sur l'iPhone un serveur HTTP **sans authentification
 | « Program License Agreement » pendant la compilation | Acceptez le nouveau contrat sur developer.apple.com/account pour cette équipe |
 | « Unlock … to Continue » | Déverrouillez l'iPhone, puis *Device › Reconnect* (⌘R) |
 | Le runner s'installe mais ne démarre jamais | Approuvez le certificat : *Réglages › Général › VPN et gestion de l'appareil* |
+| Un assistant IA n'atteint pas le serveur MCP | Vérifiez *Settings › MCP* : le serveur doit être activé, et le port doit correspondre à l'URL du client. « Port … already in use » signifie qu'un autre programme l'utilise : choisissez un autre port |
+| Les clients du réseau ne reçoivent aucune réponse | Autorisez GreanCast dans *Réglages Système › Confidentialité et sécurité › Réseau local*, puis relancez-le |
 | Fonctionne une fois, échoue une semaine plus tard | Compte gratuit : *Settings › Advanced › Rebuild WebDriverAgent* |
 | Autre problème | *Settings › Advanced › Open Log File* (`~/Library/Logs/GreanCast.log`) |
 

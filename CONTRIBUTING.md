@@ -9,7 +9,7 @@ Open `GreanCast.xcodeproj` in **Xcode 16 or later** and press ⌘R. Or, from a t
 ```bash
 make run        # Release build → build/GreanCast.app, then open it
 make debug      # Debug build
-make selftest   # connect to the plugged-in iPhone, measure fps and latency, save a frame
+make selftest   # connect to the plugged-in iPhone, measure fps and latency, save a frame, exercise the MCP server
 make icon       # regenerate the app icon from scripts/make-icon.swift
 ```
 
@@ -31,6 +31,7 @@ The Xcode project uses a **synchronized folder**: every file under `Sources/Grea
 | `Sources/GreanCast/WDA` | WebDriverAgent HTTP client, MJPEG stream, fetch/build/run manager |
 | `Sources/GreanCast/Setup` | Prerequisite checks (Xcode, teams, devices) |
 | `Sources/GreanCast/Session` | `DeviceSession`: connection flow and command queue |
+| `Sources/GreanCast/MCP` | Built-in MCP server: HTTP listener, protocol router, tool catalog and execution, settings |
 | `Sources/GreanCast/UI` | Mirror view (input mapping), main window, setup assistant, settings |
 | `Sources/GreanCast/Assets.xcassets` | App icon and accent color |
 | `Resources` | `Info.plist`, entitlements (not copied as resources) |
