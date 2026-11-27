@@ -1,5 +1,5 @@
 // SettingsView.swift
-// Settings window (⌘,): device, team, transport, maintenance.
+// Settings window (⌘,): device, team, transport, maintenance, and the MCP server (MCPSettingsView).
 
 import SwiftUI
 import AppKit
@@ -52,8 +52,11 @@ struct SettingsView: View {
             }
             .formStyle(.grouped)
             .tabItem { Label("Advanced", systemImage: "wrench.and.screwdriver") }
+
+            MCPSettingsView()
+                .tabItem { Label("MCP", systemImage: "sparkles") }
         }
-        .frame(width: 520, height: 380)
+        .frame(width: 520, height: 480)
         .task { await session.refreshChecks() }
     }
 }

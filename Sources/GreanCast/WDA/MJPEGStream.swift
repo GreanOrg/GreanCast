@@ -7,8 +7,8 @@ import Foundation
 import AppKit
 
 final class MJPEGStream: NSObject, URLSessionDataDelegate {
-    /// Called on the main thread for each new frame.
-    var onFrame: ((NSImage) -> Void)?
+    /// Called on the main thread for each new frame, with the JPEG bytes it was decoded from.
+    var onFrame: ((NSImage, Data) -> Void)?
     /// Called on the main thread on error / end of stream (it then reconnects automatically).
     var onError: ((String) -> Void)?
 
@@ -61,7 +61,7 @@ final class MJPEGStream: NSObject, URLSessionDataDelegate {
         if let latest {
             decodeQueue.async { [weak self] in
                 guard let img = NSImage(data: latest) else { return }
-                DispatchQueue.main.async { self?.onFrame?(img) }
+                DispatchQueue.main.async { self?.onFrame?(img, latest) }
             }
         }
     }

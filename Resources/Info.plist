@@ -31,7 +31,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2026 Grean — MIT License</string>
 	<key>NSLocalNetworkUsageDescription</key>
-	<string>GreanCast connects to WebDriverAgent on your iPhone. This is only needed when you use Wi‑Fi instead of USB.</string>
+	<string>GreanCast uses the local network to reach WebDriverAgent on your iPhone when you choose Wi‑Fi instead of USB, and to accept AI clients from other computers when you enable network access to its MCP server.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

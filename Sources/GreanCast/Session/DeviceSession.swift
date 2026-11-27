@@ -36,6 +36,10 @@ final class DeviceSession: ObservableObject {
     @Published private(set) var isLocked = false
     @Published private(set) var transportLabel = "—"
 
+    /// JPEG bytes of the frame in `image`, and when it arrived (served by the MCP server).
+    private(set) var lastJPEG: Data?
+    private(set) var lastFrameDate: Date?
+
     // MARK: Settings (persisted)
 
     @Published var teamID: String { didSet { defaults.set(teamID, forKey: "teamID") } }
@@ -83,7 +87,7 @@ final class DeviceSession: ObservableObject {
         videoScale = defaults.object(forKey: "videoScale") as? Double ?? 50
         keepAwake = defaults.object(forKey: "keepAwake") as? Bool ?? true
 
-        stream.onFrame = { [weak self] img in self?.received(img) }
+        stream.onFrame = { [weak self] img, jpeg in self?.received(img, jpeg: jpeg) }
         stream.onError = { [weak self] msg in self?.log.info("Video stream: \(msg) — reconnecting") }
         wda.onReady = { [weak self] in self?.log.info("WebDriverAgent reports ready") }
         wda.onHint = { [weak self] h in self?.hint = h }
@@ -182,8 +186,11 @@ final class DeviceSession: ObservableObject {
         guard let url = URL(string: wifiURL), let host = url.host else { throw WDAError(message: "invalid Wi‑Fi URL") }
         transportLabel = "Wi‑Fi"
         log.info("Wi‑Fi transport: \(url.absoluteString) (unauthenticated — trusted networks only)")
-        var c = URLComponents(); c.scheme = "http"; c.host = host; c.port = Int(WDAManager.mjpegPort)
-        return (url, c.url!)
+        // An IPv6 literal needs its brackets back (url.host drops them).
+        var c = URLComponents(); c.scheme = "http"; c.port = Int(WDAManager.mjpegPort)
+        c.host = host.contains(":") ? "[\(host)]" : host
+        guard let video = c.url else { throw WDAError(message: "invalid Wi‑Fi URL") }
+        return (url, video)
     }
 
     private func isReachable(_ base: URL) async -> Bool {
@@ -249,6 +256,8 @@ final class DeviceSession: ObservableObject {
         chain?.cancel(); chain = nil
         client = nil
         image = nil
+        lastJPEG = nil
+        lastFrameDate = nil
         isLocked = false
         pending = 0
         forwarders.forEach { $0.stop() }
@@ -316,7 +325,7 @@ final class DeviceSession: ObservableObject {
 
     // MARK: - Video
 
-    private func received(_ img: NSImage) {
+    private func received(_ img: NSImage, jpeg: Data) {
         frameCount += 1
         // Rotation: if the frame orientation no longer matches the known size, re-read it.
         if deviceSize != .zero, (img.size.width > img.size.height) != (deviceSize.width > deviceSize.height), let c = client {
@@ -324,6 +333,8 @@ final class DeviceSession: ObservableObject {
             Task { if let s = try? await c.windowSize() { self.deviceSize = s } }
         }
         image = img
+        lastJPEG = jpeg
+        lastFrameDate = Date()
     }
 
     func applyVideoScale() {
@@ -360,6 +371,47 @@ final class DeviceSession: ObservableObject {
             if !silent { self?.pending -= 1 }
         }
     }
+
+    /// Same queue as `run`, for callers that need the outcome (the MCP server): returns the
+    /// operation's value and throws its error, or throws at once when no iPhone is connected.
+    func perform<T: Sendable>(_ name: String, _ op: @escaping (WDAClient) async throws -> T) async throws -> T {
+        guard let c = client, phase == .connected else { throw WDAError(message: notConnectedReason) }
+        flushTyping()   // keep what was typed in the mirror window ahead of this command
+        lastActivity = Date()
+        pending += 1
+        let previous = chain
+        let task = Task { [weak self] () -> Result<T, Error> in
+            await previous?.value
+            let t0 = Date()
+            let result: Result<T, Error>
+            do {
+                result = .success(try await op(c))
+                self?.lastLatencyMS = Int(Date().timeIntervalSince(t0) * 1000)
+            } catch {
+                self?.log.error("\(name): \(describe(error))")
+                result = .failure(error)
+            }
+            self?.pending -= 1
+            return result
+        }
+        chain = Task { _ = await task.value }
+        return try await task.value.get()
+    }
+
+    /// Why commands can't run right now, in words a client can act on.
+    var notConnectedReason: String {
+        switch phase {
+        case .connected: return "No iPhone is connected to GreanCast."
+        case .waitingForUnlock: return "The iPhone is locked. Unlock it on the device."
+        case .needsSetup: return "GreanCast is not set up yet: finish the setup assistant in the GreanCast window."
+        case .failed(let message): return "GreanCast could not connect to the iPhone: \(message)"
+        case .checking, .preparing, .launching, .connecting:
+            return "GreanCast is still connecting to the iPhone. Try again in a few seconds."
+        }
+    }
+
+    /// UDID of the connected iPhone, for `devicectl`.
+    var connectedUDID: String? { phase == .connected ? udid : nil }
 
     private func toDevice(_ p: CGPoint) -> CGPoint {
         CGPoint(x: p.x * deviceSize.width, y: p.y * deviceSize.height)

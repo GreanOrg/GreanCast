@@ -28,6 +28,7 @@ It quickly became part of how we code and test. We figured other developers have
 - Setup assistant: checks Xcode, your Apple developer team, the iPhone and Developer Mode. It then downloads, builds, signs and launches WebDriverAgent for you.
 - **Keep awake:** while connected, GreanCast stops the iPhone from auto-locking without changing its settings (on by default, toolbar ☕️ button)
 - Lock-screen detection, with a wake & unlock button for iPhones without a passcode
+- **Built-in MCP server:** let an AI assistant (Claude Code, Codex, Cursor, VS Code…) see the iPhone and use it — see [AI assistants](#ai-assistants-mcp-server)
 
 ## Limitations (read this first)
 
@@ -80,9 +81,40 @@ Mac (GreanCast)                                  iPhone
 2. **Transport:** GreanCast talks to `usbmuxd` (the same protocol as `iproxy`) and relays two local ports, bound to 127.0.0.1 only, to the iPhone's ports 8100 and 9100.
 3. **Input:** clicks and drags become W3C pointer actions, typing goes through `/wda/keys` (batched while a request is in flight), and hardware buttons use WDA's dedicated endpoints.
 
+## AI assistants (MCP server)
+
+GreanCast includes a [Model Context Protocol](https://modelcontextprotocol.io) server, so an AI coding assistant can look at the iPhone and operate it while the app is open. There is nothing to install and no login.
+
+1. Open **Settings › MCP** and turn on **Allow AI clients on this Mac**.
+2. Add the server to your client. Settings shows the commands, ready to copy:
+
+   ```sh
+   claude mcp add --transport http greancast http://127.0.0.1:8765/mcp   # Claude Code
+   codex mcp add greancast --url http://127.0.0.1:8765/mcp               # Codex
+   ```
+
+   Cursor, VS Code and other clients take the same URL in their MCP configuration (type `http`).
+3. Ask for something: "take a screenshot of the iPhone", "open Settings and go to General".
+
+| Tools | What they do |
+|---|---|
+| `screenshot`, `screenshot_with_metadata` | The screen as a JPEG, served from the live video stream; optionally with device, iOS version, frontmost app, time, connection, resolution, orientation, battery |
+| `describe_ui`, `wait_for` | The on-screen elements (labels, values, frames) from the accessibility tree; wait for an element to appear |
+| `tap`, `tap_element`, `swipe`, `type_text` | Tap, double tap or long press at coordinates, tap an element by its label, drag or scroll, type |
+| `press_button` | Home, volume, App Switcher, Control Center, lock |
+| `list_apps`, `launch_app`, `terminate_app`, `app_state`, `open_url` | Installed apps, open or close one, open a web link or deep link |
+| `get_alert`, `accept_alert`, `dismiss_alert`, `set_orientation`, `dismiss_keyboard` | Alerts, rotation, keyboard |
+| `get_clipboard`, `set_clipboard`, `install_app` | Off by default: the iPhone clipboard, and installing a `.app`/`.ipa` from the Mac |
+
+Coordinates are in pixels of the screenshot. Action tools accept `screenshot: true` to return the screen after the action in the same call.
+
+Each group of tools has its own switch in Settings › MCP; a tool that is turned off is hidden from clients. **Allow AI clients on the local network** makes the server reachable from other computers through a URL that contains a secret token. The server speaks Streamable HTTP only: clients that can only launch local commands (stdio), such as the Claude desktop app, are not supported yet.
+
 ## Security
 
-WebDriverAgent runs an **unauthenticated** HTTP server on the iPhone. GreanCast always uses it over USB through loopback-only ports. However, **WebDriverAgent itself also listens on the iPhone's Wi‑Fi interface while it runs**: anyone on the same network could control the phone during that time. GreanCast stops WebDriverAgent when you quit. Avoid untrusted networks while a session is active. The optional Wi‑Fi mode in Settings has the same caveat. See [SECURITY.md](SECURITY.md).
+WebDriverAgent runs an **unauthenticated** HTTP server on the iPhone. GreanCast always uses it over USB through loopback-only ports. However, **WebDriverAgent itself also listens on the iPhone's Wi‑Fi interface while it runs**: anyone on the same network could control the phone during that time. GreanCast stops WebDriverAgent when you quit. Avoid untrusted networks while a session is active. The optional Wi‑Fi mode in Settings has the same caveat.
+
+The MCP server is off by default. Once enabled, any program on the Mac can see and control the iPhone through it, without authentication; over the network, anyone who has the URL can. See [SECURITY.md](SECURITY.md).
 
 ## Troubleshooting
 
@@ -91,6 +123,8 @@ WebDriverAgent runs an **unauthenticated** HTTP server on the iPhone. GreanCast 
 | "Program License Agreement" during build | Accept the new agreement at developer.apple.com/account for that team |
 | "Unlock … to Continue" | Unlock the iPhone, then *Device › Reconnect* (⌘R) |
 | Runner installed but never starts | Trust the certificate: *Settings › General › VPN & Device Management* |
+| AI client can't reach the MCP server | Check *Settings › MCP*: the server must be on, and the port must match the URL in your client. "Port … already in use" means another program has it: choose another port |
+| Network clients get no answer | Allow GreanCast under *System Settings › Privacy & Security › Local Network*, then restart it |
 | Works once, fails a week later | Free account: *Settings › Advanced › Rebuild WebDriverAgent* |
 | Anything else | *Settings › Advanced › Open Log File* (`~/Library/Logs/GreanCast.log`) |
 

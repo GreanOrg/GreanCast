@@ -1,5 +1,6 @@
 // GreanCastApp.swift
-// Entry point: one window, a Device menu with keyboard shortcuts, and a Settings window.
+// Entry point: one window, a Device menu with keyboard shortcuts, a Settings window, and the
+// built-in MCP server (off until enabled in Settings).
 
 import SwiftUI
 import AppKit
@@ -14,17 +15,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 struct GreanCastApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var session = DeviceSession()
+    @StateObject private var mcp = MCPServer()
 
     var body: some Scene {
         Window("GreanCast", id: "main") {
             MainView(session: session)
+                .environmentObject(mcp)
                 .onAppear {
                     // Stop WebDriverAgent when the app quits: it would otherwise keep listening.
-                    appDelegate.onTerminate = { [session] in
-                        MainActor.assumeIsolated { session.shutdown() }
+                    appDelegate.onTerminate = { [session, mcp] in
+                        MainActor.assumeIsolated { mcp.stop(); session.shutdown() }
                     }
                     session.start()
-                    SelfTest.runIfRequested(session)
+                    mcp.attach(session)
+                    SelfTest.runIfRequested(session, mcp: mcp)
                 }
         }
         .defaultSize(width: 480, height: 940)
@@ -46,6 +50,7 @@ struct GreanCastApp: App {
 
         Settings {
             SettingsView(session: session)
+                .environmentObject(mcp)
         }
     }
 }
